@@ -24,7 +24,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         _logger = logManager.GetLogger(nameof(SubtitleScanTask));
         _libraryManager = libraryManager;
         _fileSystem = fileSystem;
-        _subtitleSource = new XunleiSubtitleSource();
+        _subtitleSource = new SubtitleSourceChain(new XunleiSubtitleSource(), new SubtitleCatSource());
     }
 
     public string Name => Plugin.PluginName + ": 扫描并下载字幕";
