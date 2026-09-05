@@ -6,6 +6,8 @@ public sealed class PluginConfiguration : BasePluginConfiguration
 {
     public bool EnableScheduledScan { get; set; } = true;
     public bool EnableManualScan { get; set; } = true;
+    public bool EnableLibraryEvents { get; set; }
+    public bool ForceFullScan { get; set; }
     public bool OverwriteExistingSubtitles { get; set; }
     public string TargetLanguage { get; set; } = "zh-CN";
     public int MaxConcurrency { get; set; } = 1;

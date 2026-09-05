@@ -14,6 +14,7 @@ namespace JavSubtitleScraper;
 
 public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTask
 {
+    internal static SubtitleScanTask? Current { get; private set; }
     private readonly ILibraryManager _libraryManager;
     private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
@@ -25,6 +26,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         _libraryManager = libraryManager;
         _fileSystem = fileSystem;
         _subtitleSource = new SubtitleSourceChain(new XunleiSubtitleSource(), new SubtitleCatSource());
+        Current = this;
     }
 
     public string Name => Plugin.PluginName + ": 扫描并下载字幕";
@@ -62,25 +64,35 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
 
     private async Task ScanAsync(CancellationToken cancellationToken, IProgress<double> progress)
     {
-        var paths = _libraryManager.GetVirtualFolders()
-            .Where(folder => string.Equals(folder.CollectionType, "movies", StringComparison.OrdinalIgnoreCase))
-            .SelectMany(folder => folder.Locations ?? Array.Empty<string>())
+        var items = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            Recursive = true,
+            IncludeItemTypes = new[] { "Movie", "Video" },
+            IsFolder = false
+        });
+        var files = items
+            .Where(item => !string.IsNullOrWhiteSpace(item.Path))
+            .Select(item => item.Path)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-        var files = paths.SelectMany(path => GetVideoFiles(path, cancellationToken)).ToList();
         _logger.Info($"Found {files.Count} video files.");
 
         for (var index = 0; index < files.Count; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var file = files[index];
-            var number = NumberExtractor.FromPath(file.FullName);
+            var number = NumberExtractor.FromPath(file);
             if (number == null)
-                _logger.Debug($"Skipped file without JAV number: {file.FullName}");
+                _logger.Debug($"Skipped file without JAV number: {file}");
             else
             {
-                _logger.Debug($"Matched {number}: {file.FullName}");
+                _logger.Debug($"Matched {number}: {file}");
+                if (!Plugin.Instance.Configuration.ForceFullScan && HasSubtitle(file, Plugin.Instance.Configuration.TargetLanguage))
+                {
+                    _logger.Debug($"Skipped existing subtitle for {number}: {file}");
+                    progress.Report((index + 1d) / Math.Max(files.Count, 1) * 100d);
+                    continue;
+                }
                 try
                 {
                     var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
@@ -94,7 +106,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
                             try
                             {
                                 using var content = await _subtitleSource.DownloadAsync(candidate, cancellationToken).ConfigureAwait(false);
-                                var saved = await SubtitleFileWriter.SaveAsync(file.FullName, candidate, content, Plugin.Instance.Configuration.OverwriteExistingSubtitles, cancellationToken).ConfigureAwait(false);
+                                var saved = await SubtitleFileWriter.SaveAsync(file, candidate, content, Plugin.Instance.Configuration.OverwriteExistingSubtitles, cancellationToken).ConfigureAwait(false);
                                 _logger.Info($"Downloaded subtitle for {number}: {saved}");
                                 lastError = null;
                                 break;
@@ -127,6 +139,33 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         }
 
         progress.Report(100);
+    }
+
+    private static bool HasSubtitle(string videoPath, string language)
+    {
+        var directory = Path.GetDirectoryName(videoPath);
+        if (string.IsNullOrWhiteSpace(directory)) return false;
+        var baseName = Path.GetFileNameWithoutExtension(videoPath);
+        var suffix = "." + (string.IsNullOrWhiteSpace(language) ? "und" : language.Trim()) + ".";
+        return Directory.Exists(directory) && Directory.EnumerateFiles(directory, baseName + suffix + "*", SearchOption.TopDirectoryOnly).Any();
+    }
+
+    internal async Task ProcessSingleAsync(string videoPath, CancellationToken cancellationToken)
+    {
+        var number = NumberExtractor.FromPath(videoPath);
+        if (number == null || HasSubtitle(videoPath, Plugin.Instance.Configuration.TargetLanguage)) return;
+        var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                using var content = await _subtitleSource.DownloadAsync(candidate, cancellationToken).ConfigureAwait(false);
+                await SubtitleFileWriter.SaveAsync(videoPath, candidate, content, Plugin.Instance.Configuration.OverwriteExistingSubtitles, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch { }
+        }
     }
 
     private IEnumerable<FileSystemMetadata> GetVideoFiles(string path, CancellationToken cancellationToken)
