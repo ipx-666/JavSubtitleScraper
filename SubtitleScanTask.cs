@@ -84,15 +84,34 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
                 try
                 {
                     var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
-                    if (candidates.Count > 0)
-                    {
-                        var candidate = candidates[0];
-                        using var content = await _subtitleSource.DownloadAsync(candidate, cancellationToken).ConfigureAwait(false);
-                        var saved = await SubtitleFileWriter.SaveAsync(file.FullName, candidate, content, Plugin.Instance.Configuration.OverwriteExistingSubtitles, cancellationToken).ConfigureAwait(false);
-                        _logger.Info($"Downloaded subtitle for {number}: {saved}");
-                    }
-                    else
+                    if (candidates.Count == 0)
                         _logger.Warn($"No subtitle found for {number}.");
+                    else
+                    {
+                        Exception? lastError = null;
+                        foreach (var candidate in candidates)
+                        {
+                            try
+                            {
+                                using var content = await _subtitleSource.DownloadAsync(candidate, cancellationToken).ConfigureAwait(false);
+                                var saved = await SubtitleFileWriter.SaveAsync(file.FullName, candidate, content, Plugin.Instance.Configuration.OverwriteExistingSubtitles, cancellationToken).ConfigureAwait(false);
+                                _logger.Info($"Downloaded subtitle for {number}: {saved}");
+                                lastError = null;
+                                break;
+                            }
+                            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                            {
+                                throw;
+                            }
+                            catch (Exception candidateError)
+                            {
+                                lastError = candidateError;
+                            }
+                        }
+
+                        if (lastError != null)
+                            _logger.Error($"All subtitle candidates failed for {number}: {lastError.Message}");
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {

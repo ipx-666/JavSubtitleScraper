@@ -27,9 +27,10 @@ public sealed class SubtitleCatSource : ISubtitleSource
         {
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             var text = WebUtility.HtmlDecode(Regex.Replace(match.Groups["text"].Value, "<[^>]+>", " "));
-            if (!href.Contains("/subtitle/", StringComparison.OrdinalIgnoreCase) || !MatchesCode(href + " " + text, videoNumber)) continue;
+            if (!MatchesCode(href + " " + text, videoNumber)) continue;
             results.Add(new SubtitleCandidate { Source = Name, Id = href, Language = language, Format = "srt", DownloadUrl = ToAbsolute(href), Title = text.Trim() });
         }
+        results.Sort((left, right) => LanguageScore(right.Title).CompareTo(LanguageScore(left.Title)));
         return results;
     }
 
@@ -65,5 +66,13 @@ public sealed class SubtitleCatSource : ISubtitleSource
         var normalizedValue = Regex.Replace(value, "[^A-Za-z0-9]", string.Empty).ToUpperInvariant();
         var normalizedCode = Regex.Replace(code, "[^A-Za-z0-9]", string.Empty).ToUpperInvariant();
         return normalizedCode.Length > 0 && normalizedValue.Contains(normalizedCode, StringComparison.Ordinal);
+    }
+
+    private static int LanguageScore(string value)
+    {
+        var text = value.ToLowerInvariant();
+        if (text.Contains("zh-cn") || text.Contains("zh_cn") || text.Contains("simplified") || text.Contains("简体") || text.Contains("简中") || text.Contains("chs")) return 3;
+        if (text.Contains("zh") || text.Contains("cn") || text.Contains("chinese") || text.Contains("中文")) return 2;
+        return 1;
     }
 }
