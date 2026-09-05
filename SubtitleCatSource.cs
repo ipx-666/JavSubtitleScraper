@@ -37,7 +37,25 @@ public sealed class SubtitleCatSource : ISubtitleSource
     {
         using var response = await Client.GetAsync(candidate.DownloadUrl, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        return new MemoryStream(await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false), writable: false);
+        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
+        if (contentType.Contains("subtitle", StringComparison.OrdinalIgnoreCase) ||
+            contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase) ||
+            candidate.DownloadUrl.EndsWith(".srt", StringComparison.OrdinalIgnoreCase))
+            return new MemoryStream(bytes, writable: false);
+
+        var html = System.Text.Encoding.UTF8.GetString(bytes);
+        foreach (Match match in LinkRegex.Matches(html))
+        {
+            var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
+            if (!href.Contains(".srt", StringComparison.OrdinalIgnoreCase) && !href.Contains("download.php", StringComparison.OrdinalIgnoreCase)) continue;
+            var downloadUrl = ToAbsolute(href);
+            using var subtitleResponse = await Client.GetAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+            subtitleResponse.EnsureSuccessStatusCode();
+            return new MemoryStream(await subtitleResponse.Content.ReadAsByteArrayAsync().ConfigureAwait(false), writable: false);
+        }
+
+        throw new InvalidDataException("SubtitleCat page did not contain a subtitle download link.");
     }
 
     private static string ToAbsolute(string href) => href.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? href : Site + (href.StartsWith("/") ? href : "/" + href);
