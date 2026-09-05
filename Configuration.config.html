@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head><title>JavSubtitleScraper</title></head>
+<body>
+<form class="JavSubtitleScraperConfigPage" style="max-width:700px">
+  <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="targetLanguage">字幕语言</label><input id="targetLanguage" type="text" is="emby-input" /><div class="fieldDescription">例如 zh-CN</div></div>
+  <label class="checkboxContainer"><input id="enableScheduledScan" type="checkbox" is="emby-checkbox" /><span>启用定时扫描</span></label>
+  <label class="checkboxContainer"><input id="enableManualScan" type="checkbox" is="emby-checkbox" /><span>允许手动扫描</span></label>
+  <label class="checkboxContainer"><input id="enableLibraryEvents" type="checkbox" is="emby-checkbox" /><span>监听媒体库新增和更新</span></label>
+  <label class="checkboxContainer"><input id="forceFullScan" type="checkbox" is="emby-checkbox" /><span>强制全库重扫</span></label>
+  <label class="checkboxContainer"><input id="overwriteExistingSubtitles" type="checkbox" is="emby-checkbox" /><span>覆盖已有字幕</span></label>
+  <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="maxConcurrency">最大并发数</label><input id="maxConcurrency" type="number" min="1" max="8" is="emby-input" /></div>
+  <div><button type="submit" is="emby-button" class="raised button-submit">保存</button><span class="statusMessage" style="margin-left:1em"></span></div>
+</form>
+<script type="text/javascript">
+var page = document.querySelector('.JavSubtitleScraperConfigPage');
+page.addEventListener('viewshow', function () {
+  ApiClient.getPluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
+    ['enableScheduledScan','enableManualScan','enableLibraryEvents','forceFullScan','overwriteExistingSubtitles'].forEach(function (id) { document.getElementById(id).checked = !!config[id.charAt(0).toUpperCase() + id.slice(1)]; });
+    document.getElementById('targetLanguage').value = config.TargetLanguage || 'zh-CN';
+    document.getElementById('maxConcurrency').value = config.MaxConcurrency || 1;
+  });
+});
+page.addEventListener('submit', function (e) {
+  e.preventDefault();
+  ApiClient.getPluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
+    ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) { config[name] = document.getElementById(name.charAt(0).toLowerCase() + name.slice(1)).checked; });
+    config.TargetLanguage = document.getElementById('targetLanguage').value || 'zh-CN';
+    config.MaxConcurrency = Math.max(1, Math.min(8, parseInt(document.getElementById('maxConcurrency').value || '1', 10)));
+    return ApiClient.updatePluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', config);
+  }).then(function () { page.querySelector('.statusMessage').textContent = '已保存'; });
+});
+</script>
+</body>
+</html>
