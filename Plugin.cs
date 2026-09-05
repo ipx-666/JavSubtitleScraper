@@ -1,0 +1,22 @@
+using System;
+using MediaBrowser.Common.Configuration;
+using MediaBrowser.Common.Plugins;
+using MediaBrowser.Model.Serialization;
+
+namespace JavSubtitleScraper;
+
+public sealed class Plugin : BasePlugin<PluginConfiguration>
+{
+    public const string PluginName = "JavSubtitleScraper";
+    public static Plugin Instance { get; private set; } = null!;
+
+    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+        : base(applicationPaths, xmlSerializer)
+    {
+        Instance = this;
+    }
+
+    public override Guid Id => new("1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d");
+    public override string Name => PluginName;
+    public override string Description => "Download Chinese subtitles for JAV videos";
+}
