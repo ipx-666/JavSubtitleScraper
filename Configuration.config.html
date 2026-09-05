@@ -15,7 +15,7 @@
 <script type="text/javascript">
 var page = document.querySelector('.JavSubtitleScraperConfigPage');
 page.addEventListener('viewshow', function () {
-  ApiClient.getPluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
+  ApiClient.getPluginConfiguration('1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
     ['enableScheduledScan','enableManualScan','enableLibraryEvents','forceFullScan','overwriteExistingSubtitles'].forEach(function (id) { document.getElementById(id).checked = !!config[id.charAt(0).toUpperCase() + id.slice(1)]; });
     document.getElementById('targetLanguage').value = config.TargetLanguage || 'zh-CN';
     document.getElementById('maxConcurrency').value = config.MaxConcurrency || 1;
@@ -23,11 +23,11 @@ page.addEventListener('viewshow', function () {
 });
 page.addEventListener('submit', function (e) {
   e.preventDefault();
-  ApiClient.getPluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
+  ApiClient.getPluginConfiguration('1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
     ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) { config[name] = document.getElementById(name.charAt(0).toLowerCase() + name.slice(1)).checked; });
     config.TargetLanguage = document.getElementById('targetLanguage').value || 'zh-CN';
     config.MaxConcurrency = Math.max(1, Math.min(8, parseInt(document.getElementById('maxConcurrency').value || '1', 10)));
-    return ApiClient.updatePluginConfiguration(ApiClient.getDeviceId(), '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', config);
+    return ApiClient.updatePluginConfiguration('1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', config);
   }).then(function () { page.querySelector('.statusMessage').textContent = '已保存'; });
 });
 </script>
