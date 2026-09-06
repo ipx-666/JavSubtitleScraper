@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
-using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Tasks;
 
@@ -16,15 +15,13 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
 {
     internal static SubtitleScanTask? Current { get; private set; }
     private readonly ILibraryManager _libraryManager;
-    private readonly IFileSystem _fileSystem;
     private readonly ILogger _logger;
     private readonly ISubtitleSource _subtitleSource;
 
-    public SubtitleScanTask(ILogManager logManager, ILibraryManager libraryManager, IFileSystem fileSystem)
+    public SubtitleScanTask(ILogManager logManager, ILibraryManager libraryManager)
     {
         _logger = logManager.GetLogger(nameof(SubtitleScanTask));
         _libraryManager = libraryManager;
-        _fileSystem = fileSystem;
         _subtitleSource = new SubtitleSourceChain(new XunleiSubtitleSource(), new SubtitleCatSource());
         Current = this;
     }
@@ -168,19 +165,4 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         }
     }
 
-    private IEnumerable<FileSystemMetadata> GetVideoFiles(string path, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        try
-        {
-            return _fileSystem.GetFiles(path, true)
-                .Where(file => _libraryManager.IsVideoFile(file.FullName.AsSpan()))
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"Failed to scan {path}: {ex.Message}");
-            return Array.Empty<FileSystemMetadata>();
-        }
-    }
 }
