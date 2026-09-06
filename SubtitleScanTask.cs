@@ -48,17 +48,6 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         await ScanAsync(cancellationToken, progress).ConfigureAwait(false);
     }
 
-    public async Task RunManualAsync(CancellationToken cancellationToken, IProgress<double> progress)
-    {
-        if (!Plugin.Instance.Configuration.EnableManualScan)
-        {
-            _logger.Info("Manual subtitle scan is disabled.");
-            return;
-        }
-
-        await ScanAsync(cancellationToken, progress).ConfigureAwait(false);
-    }
-
     private async Task ScanAsync(CancellationToken cancellationToken, IProgress<double> progress)
     {
         var items = _libraryManager.GetItemList(new InternalItemsQuery

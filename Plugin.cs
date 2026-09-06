@@ -4,7 +4,6 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Plugins;
 using System.Collections.Generic;
-using MediaBrowser.Model.Logging;
 
 namespace JavSubtitleScraper;
 
