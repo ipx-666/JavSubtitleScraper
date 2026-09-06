@@ -12,7 +12,8 @@
   <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="maxConcurrency">最大并发数</label><input id="maxConcurrency" type="number" min="1" max="8" is="emby-input" /></div>
   <div><button type="submit" is="emby-button" class="raised button-submit">保存</button><span class="statusMessage" style="margin-left:1em"></span></div>
 </form>
-<script type="text/javascript">
+<script type="text/javascript" src="configuration.js"></script>
+<!--
 var page = document.querySelector('.JavSubtitleScraperConfigPage');
 page.addEventListener('viewshow', function () {
   ApiClient.getPluginConfiguration('1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d').then(function (config) {
@@ -30,6 +31,6 @@ page.addEventListener('submit', function (e) {
     return ApiClient.updatePluginConfiguration('1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', config);
   }).then(function () { page.querySelector('.statusMessage').textContent = '已保存'; });
 });
-</script>
+-->
 </body>
 </html>

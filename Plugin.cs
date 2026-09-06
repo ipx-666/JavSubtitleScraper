@@ -33,6 +33,11 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             EnableInMainMenu = false,
             EnableInUserMenu = false,
             IsMainConfigPage = true
+        },
+        new PluginPageInfo
+        {
+            Name = "configuration.js",
+            EmbeddedResourcePath = GetType().Namespace + ".configuration.js"
         }
     };
 }
