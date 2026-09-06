@@ -14,6 +14,7 @@ namespace JavSubtitleScraper;
 public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTask
 {
     internal static SubtitleScanTask? Current { get; private set; }
+    private readonly SemaphoreSlim _concurrencyGate;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger _logger;
     private readonly ISubtitleSource _subtitleSource;
@@ -23,6 +24,8 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         _logger = logManager.GetLogger(nameof(SubtitleScanTask));
         _libraryManager = libraryManager;
         _subtitleSource = new SubtitleSourceChain(new XunleiSubtitleSource(), new SubtitleCatSource());
+        var concurrency = Math.Clamp(Plugin.Instance?.Configuration.MaxConcurrency ?? 4, 1, 8);
+        _concurrencyGate = new SemaphoreSlim(concurrency, concurrency);
         Current = this;
     }
 
@@ -63,10 +66,28 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
             .ToList();
         _logger.Info($"Found {files.Count} video files.");
 
-        for (var index = 0; index < files.Count; index++)
+        var completed = 0;
+        var jobs = files.Select(async file =>
         {
+            await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await ProcessFileAsync(file, forceFullScan, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                var index = Interlocked.Increment(ref completed);
+                progress.Report(index / (double)Math.Max(files.Count, 1) * 100d);
+                _concurrencyGate.Release();
+            }
+        });
+        await Task.WhenAll(jobs).ConfigureAwait(false);
+        progress.Report(100);
+    }
+
+    private async Task ProcessFileAsync(string file, bool forceFullScan, CancellationToken cancellationToken)
+    {
             cancellationToken.ThrowIfCancellationRequested();
-            var file = files[index];
             var number = NumberExtractor.FromPath(file);
             if (number == null)
                 _logger.Debug($"Skipped file without JAV number: {file}");
@@ -76,8 +97,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
                 if (!forceFullScan && HasSubtitle(file, Plugin.Instance.Configuration.TargetLanguage))
                 {
                     _logger.Debug($"Skipped existing subtitle for {number}: {file}");
-                    progress.Report((index + 1d) / Math.Max(files.Count, 1) * 100d);
-                    continue;
+                    return;
                 }
                 try
                 {
@@ -121,10 +141,6 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
                 }
             }
 
-            progress.Report((index + 1d) / Math.Max(files.Count, 1) * 100d);
-        }
-
-        progress.Report(100);
     }
 
     private static bool HasSubtitle(string videoPath, string language)
@@ -138,6 +154,9 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
 
     internal async Task ProcessSingleAsync(string videoPath, CancellationToken cancellationToken)
     {
+        await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
         var number = NumberExtractor.FromPath(videoPath);
         if (number == null || HasSubtitle(videoPath, Plugin.Instance.Configuration.TargetLanguage)) return;
         var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
@@ -151,6 +170,11 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
             catch { }
+        }
+        }
+        finally
+        {
+            _concurrencyGate.Release();
         }
     }
 
