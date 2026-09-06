@@ -27,7 +27,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         new PluginPageInfo
         {
             Name = Name,
-            DisplayName = PluginName,
+            DisplayName = "JavSubtitleScraper",
             EmbeddedResourcePath = GetType().Namespace + ".Configuration.config.html",
             EnableInMainMenu = false,
             EnableInUserMenu = false,
