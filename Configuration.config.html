@@ -35,6 +35,10 @@
 <script type="text/javascript">
 (function () {
   var pluginId='1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', page=document.querySelector('.pluginConfigurationPage');
+  function setHeaderTitle() {
+    var title=document.querySelector('.pageTitle');
+    if (title) title.textContent='JavSubtitleScraper';
+  }
   function update() {
     var manual=$('#enableManualScan',page).prop('checked'), scheduled=$('#enableScheduledScan',page).prop('checked'), weekly=$('#scheduleMode',page).val()==='Weekly';
     $('#forceFullScan',page).prop('disabled',!manual).closest('.checkboxContainer').toggleClass('disabled',!manual);
@@ -51,7 +55,7 @@
       $('#scheduleMode',page).val(c.ScheduleMode||'Daily'); $('#dailyTime',page).val(c.DailyTime||'03:00:00'); $('#weeklyDay',page).val(c.WeeklyDay||'Sunday'); $('#weeklyTime',page).val(c.WeeklyTime||'03:00:00'); update();
     });
   }
-  $(page).on('viewshow pageshow',load).on('change','#enableManualScan,#enableScheduledScan,#scheduleMode',update).on('submit','.JavSubtitleScraperConfigForm',function(){
+  $(page).on('viewshow pageshow',function(){ setHeaderTitle(); window.setTimeout(setHeaderTitle, 100); load(); }).on('change','#enableManualScan,#enableScheduledScan,#scheduleMode',update).on('submit','.JavSubtitleScraperConfigForm',function(){
     var form=this; Dashboard.showLoadingMsg();
     ApiClient.getPluginConfiguration(pluginId).then(function(c){
       ['EnableManualScan','ForceFullScan','EnableScheduledScan','EnableLibraryEvents','OverwriteExistingSubtitles'].forEach(function(n){c[n]=$('#'+n.charAt(0).toLowerCase()+n.slice(1),form).prop('checked');});
