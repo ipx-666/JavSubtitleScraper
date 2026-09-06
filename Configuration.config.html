@@ -28,8 +28,8 @@
 <label class="checkboxContainer"><input id="enableLibraryEvents" type="checkbox" is="emby-checkbox" checked><span>&#30417;&#21548;&#23186;&#20307;&#24211;&#26032;&#22686;&#21644;&#26356;&#26032;</span></label>
 
 <div class="sectionTitle" style="font-weight:600;margin-top:2em;">&#24615;&#33021;</div>
-<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="maxConcurrency">&#26368;&#22823;&#24182;&#21457;&#25968;</label><input id="maxConcurrency" type="number" min="1" max="8" is="emby-input"><div class="fieldDescription">&#40664;&#35748;&#20351;&#29992;&#22788;&#29702;&#22120;&#26680;&#24515;&#25968;&#30340;&#19968;&#21322;&#65292;&#26368;&#22823; 8&#12290;</div></div>
-<div class="formDialogFooter" style="margin-top:2em;clear:both;"><button type="submit" is="emby-button" class="raised button-submit block">&#20445;&#23384;</button></div>
+<div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="maxConcurrency">&#26368;&#22823;&#24182;&#21457;&#25968;</label><input id="maxConcurrency" type="number" min="1" max="8" value="4" is="emby-input"><div class="fieldDescription">&#40664;&#35748;&#24182;&#21457;&#25968;&#20026; 4&#12290;</div></div>
+<button type="submit" is="emby-button" class="raised button-submit block">&#20445;&#23384;</button>
 </form>
 </div></div>
 <script type="text/javascript">
@@ -47,7 +47,7 @@
         var defaultValue=n==='EnableManualScan'||n==='EnableLibraryEvents';
         $('#'+n.charAt(0).toLowerCase()+n.slice(1),page).prop('checked',c[n]===undefined?defaultValue:!!c[n]);
       });
-      $('#targetLanguage',page).val('zh-CN'); $('#maxConcurrency',page).val(c.MaxConcurrency||Math.max(1,Math.min(8,Math.floor((navigator.hardwareConcurrency||2)/2))));
+      $('#targetLanguage',page).val('zh-CN'); $('#maxConcurrency',page).val(c.MaxConcurrency||4);
       $('#scheduleMode',page).val(c.ScheduleMode||'Daily'); $('#dailyTime',page).val(c.DailyTime||'03:00:00'); $('#weeklyDay',page).val(c.WeeklyDay||'Sunday'); $('#weeklyTime',page).val(c.WeeklyTime||'03:00:00'); update();
     });
   }
@@ -55,7 +55,7 @@
     var form=this; Dashboard.showLoadingMsg();
     ApiClient.getPluginConfiguration(pluginId).then(function(c){
       ['EnableManualScan','ForceFullScan','EnableScheduledScan','EnableLibraryEvents','OverwriteExistingSubtitles'].forEach(function(n){c[n]=$('#'+n.charAt(0).toLowerCase()+n.slice(1),form).prop('checked');});
-      c.TargetLanguage='zh-CN'; c.MaxConcurrency=Math.max(1,Math.min(8,parseInt($('#maxConcurrency',form).val()||'1',10))); c.ScheduleMode=$('#scheduleMode',form).val()||'Daily'; c.DailyTime=$('#dailyTime',form).val()||'03:00:00'; c.WeeklyDay=$('#weeklyDay',form).val()||'Sunday'; c.WeeklyTime=$('#weeklyTime',form).val()||'03:00:00'; return ApiClient.updatePluginConfiguration(pluginId,c);
+      c.TargetLanguage='zh-CN'; c.MaxConcurrency=Math.max(1,Math.min(8,parseInt($('#maxConcurrency',form).val()||'4',10))); c.ScheduleMode=$('#scheduleMode',form).val()||'Daily'; c.DailyTime=$('#dailyTime',form).val()||'03:00:00'; c.WeeklyDay=$('#weeklyDay',form).val()||'Sunday'; c.WeeklyTime=$('#weeklyTime',form).val()||'03:00:00'; return ApiClient.updatePluginConfiguration(pluginId,c);
     }).then(function(r){Dashboard.processPluginConfigurationUpdateResult(r);}).finally(function(){Dashboard.hideLoadingMsg();}); return false;
   });
 }());
