@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head><title>JavSubtitleScraper</title></head>
+<body>
+<div data-role="page" class="page type-interior pluginConfigurationPage JavSubtitleScraperConfigurationPage">
+  <div data-role="content"><div class="content-primary">
+    <form class="JavSubtitleScraperConfigForm">
+      <div class="inputContainer"><label for="targetLanguage">字幕语言</label><input id="targetLanguage" type="text"><div class="fieldDescription">例如 zh-CN</div></div>
+      <label><input id="enableScheduledScan" type="checkbox"> 启用定时扫描</label>
+      <label><input id="enableManualScan" type="checkbox"> 允许手动扫描</label>
+      <label><input id="enableLibraryEvents" type="checkbox"> 监听媒体库新增和更新</label>
+      <label><input id="forceFullScan" type="checkbox"> 强制全库重扫</label>
+      <label><input id="overwriteExistingSubtitles" type="checkbox"> 覆盖已有字幕</label>
+      <div class="inputContainer"><label for="maxConcurrency">最大并发数</label><input id="maxConcurrency" type="number" min="1" max="8"></div>
+      <button type="submit" data-theme="b" data-icon="check">保存</button>
+    </form>
+  </div></div>
+  <script type="text/javascript">
+    (function () {
+      var pluginId = '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d';
+      $('.JavSubtitleScraperConfigurationPage').on('pageshow', function () {
+        var page = this;
+        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+          ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) {
+            $('#' + name.charAt(0).toLowerCase() + name.slice(1), page).prop('checked', !!config[name]);
+          });
+          $('#targetLanguage', page).val(config.TargetLanguage || 'zh-CN');
+          $('#maxConcurrency', page).val(config.MaxConcurrency || 1);
+        });
+      }).on('submit', '.JavSubtitleScraperConfigForm', function () {
+        var form = this;
+        Dashboard.showLoadingMsg();
+        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
+          ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) {
+            config[name] = $('#' + name.charAt(0).toLowerCase() + name.slice(1), form).prop('checked');
+          });
+          config.TargetLanguage = $('#targetLanguage', form).val() || 'zh-CN';
+          config.MaxConcurrency = Math.max(1, Math.min(8, parseInt($('#maxConcurrency', form).val() || '1', 10)));
+          return ApiClient.updatePluginConfiguration(pluginId, config);
+        }).then(function (result) {
+          Dashboard.hideLoadingMsg();
+          Dashboard.processPluginConfigurationUpdateResult(result);
+        });
+        return false;
+      });
+    }());
+  </script>
+</div>
+</body>
+</html>

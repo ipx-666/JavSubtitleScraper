@@ -13,7 +13,6 @@
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Configuration.config.html" />
-    <EmbeddedResource Include="configuration.js" />
+    <EmbeddedResource Include="Configuration.configPage.html" />
   </ItemGroup>
 </Project>
