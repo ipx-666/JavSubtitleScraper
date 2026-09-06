@@ -28,7 +28,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             Name = Name,
             DisplayName = PluginName,
-            EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
+            EmbeddedResourcePath = GetType().Namespace + ".Configuration.config.html",
             EnableInMainMenu = false,
             EnableInUserMenu = false,
             IsMainConfigPage = true
