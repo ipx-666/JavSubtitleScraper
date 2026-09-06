@@ -2,84 +2,56 @@
 <html>
 <head><title>JavSubtitleScraper</title></head>
 <body>
-<div data-role="page" class="page type-interior pluginConfigurationPage JavSubtitleScraperConfigurationPage">
+<div data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-input,emby-select,emby-checkbox">
   <div data-role="content"><div class="content-primary">
     <form class="JavSubtitleScraperConfigForm">
       <div class="sectionTitle">字幕设置</div>
-      <div class="inputContainer">
-        <label for="targetLanguage">字幕语言</label>
-        <input id="targetLanguage" name="targetLanguage" type="text" is="emby-input" />
-        <div class="fieldDescription">只下载指定语言字幕，例如 zh-CN。</div>
-      </div>
+      <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="targetLanguage">字幕语言</label><input id="targetLanguage" type="text" is="emby-input" /><div class="fieldDescription">只下载指定语言字幕，例如 zh-CN。</div></div>
       <label class="checkboxContainer"><input id="overwriteExistingSubtitles" type="checkbox" is="emby-checkbox" /><span>覆盖已有字幕</span></label>
-      <div class="fieldDescription checkboxFieldDescription">关闭时，已有同语言字幕的媒体会直接跳过。</div>
-
       <div class="sectionTitle">手动扫描</div>
       <label class="checkboxContainer"><input id="enableManualScan" type="checkbox" is="emby-checkbox" /><span>允许手动扫描</span></label>
-      <label class="checkboxContainer nestedOption"><input id="forceFullScan" type="checkbox" is="emby-checkbox" /><span>强制全库重扫</span></label>
-      <div class="fieldDescription checkboxFieldDescription">开启后，手动运行计划任务时会忽略已有字幕并重新查询。</div>
-
+      <label class="checkboxContainer"><input id="forceFullScan" type="checkbox" is="emby-checkbox" /><span>强制全库重扫</span></label>
       <div class="sectionTitle">定时扫描</div>
       <label class="checkboxContainer"><input id="enableScheduledScan" type="checkbox" is="emby-checkbox" /><span>启用定时扫描</span></label>
       <div id="scheduleOptions">
-        <div class="inputContainer">
-          <label for="scheduleMode">扫描频率</label>
-          <select id="scheduleMode" is="emby-select"><option value="Daily">每天</option><option value="Weekly">每周</option></select>
+        <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="scheduleMode">扫描频率</label><select id="scheduleMode" is="emby-select"><option value="Daily">每天</option><option value="Weekly">每周</option></select></div>
+        <div class="inputContainer" id="dailyTimeRow"><label class="inputLabel inputLabelUnfocused" for="dailyTime">每天扫描时间</label><input id="dailyTime" type="time" is="emby-input" /></div>
+        <div id="weeklyOptions">
+          <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="weeklyDay">每周星期</label><select id="weeklyDay" is="emby-select"><option value="Sunday">星期日</option><option value="Monday">星期一</option><option value="Tuesday">星期二</option><option value="Wednesday">星期三</option><option value="Thursday">星期四</option><option value="Friday">星期五</option><option value="Saturday">星期六</option></select></div>
+          <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="weeklyTime">每周扫描时间</label><input id="weeklyTime" type="time" is="emby-input" /></div>
         </div>
-        <div class="inputContainer" id="dailyTimeRow"><label for="dailyTime">每天扫描时间</label><input id="dailyTime" type="time" is="emby-input" /></div>
-        <div class="inputContainer" id="weeklyOptions"><label for="weeklyDay">每周扫描日</label><select id="weeklyDay" is="emby-select"><option value="Sunday">星期日</option><option value="Monday">星期一</option><option value="Tuesday">星期二</option><option value="Wednesday">星期三</option><option value="Thursday">星期四</option><option value="Friday">星期五</option><option value="Saturday">星期六</option></select><label for="weeklyTime">扫描时间</label><input id="weeklyTime" type="time" is="emby-input" /></div>
       </div>
-      <div class="fieldDescription">定时扫描始终只处理没有目标字幕的媒体。</div>
-
       <div class="sectionTitle">媒体库事件</div>
       <label class="checkboxContainer"><input id="enableLibraryEvents" type="checkbox" is="emby-checkbox" /><span>监听媒体库新增和更新</span></label>
-      <div class="fieldDescription checkboxFieldDescription">媒体入库或更新后自动处理对应视频，不扫描整个媒体库。</div>
-
       <div class="sectionTitle">性能</div>
-      <div class="inputContainer"><label for="maxConcurrency">最大并发数</label><input id="maxConcurrency" type="number" min="1" max="8" is="emby-input" /><div class="fieldDescription">建议使用处理器核心数的一半，最多 8 个。</div></div>
-      <button type="submit" is="emby-button" class="raised button-submit block">保存</button>
+      <div class="inputContainer"><label class="inputLabel inputLabelUnfocused" for="maxConcurrency">最大并发数</label><input id="maxConcurrency" type="number" min="1" max="8" is="emby-input" /><div class="fieldDescription">建议使用处理器核心数的一半，最大 8。</div></div>
+      <div class="formDialogFooter"><button type="submit" is="emby-button" class="raised button-submit block">保存</button></div>
     </form>
   </div></div>
   <script type="text/javascript">
     (function () {
-      var pluginId = '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d';
-      var pageSelector = '.JavSubtitleScraperConfigurationPage';
-      function updateVisibility(page) {
-        var manual = $('#enableManualScan', page).prop('checked');
-        var scheduled = $('#enableScheduledScan', page).prop('checked');
+      var pluginId = '1fbd6b47-0fa2-4f6e-bc3c-8e8c9b3d0f4d', page = document.querySelector('.pluginConfigurationPage');
+      function update() {
+        var manual = $('#enableManualScan', page).prop('checked'), scheduled = $('#enableScheduledScan', page).prop('checked'), weekly = $('#scheduleMode', page).val() === 'Weekly';
         $('#forceFullScan', page).prop('disabled', !manual).closest('.checkboxContainer').toggleClass('disabled', !manual);
-        $('#scheduleOptions', page).toggleClass('disabled', !scheduled);
-        $('#scheduleOptions input, #scheduleOptions select', page).prop('disabled', !scheduled);
-        var weekly = $('#scheduleMode', page).val() === 'Weekly';
-        $('#weeklyOptions', page).toggle(weekly && scheduled);
-        $('#dailyTimeRow', page).toggle(!weekly && scheduled);
+        $('#scheduleOptions', page).toggleClass('disabled', !scheduled).find('input,select').prop('disabled', !scheduled);
+        $('#dailyTimeRow', page).toggle(scheduled && !weekly); $('#weeklyOptions', page).toggle(scheduled && weekly);
       }
-      $(pageSelector).on('pageshow', function () {
-        var page = this;
-        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-          ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) { $('#' + name.charAt(0).toLowerCase() + name.slice(1), page).prop('checked', !!config[name]); });
-          $('#targetLanguage', page).val(config.TargetLanguage || 'zh-CN');
-          $('#maxConcurrency', page).val(config.MaxConcurrency || Math.max(1, Math.min(4, Math.floor((navigator.hardwareConcurrency || 2) / 2))));
-          $('#scheduleMode', page).val(config.ScheduleMode || 'Daily');
-          $('#dailyTime', page).val(config.DailyTime || '03:00');
-          $('#weeklyDay', page).val(config.WeeklyDay || 'Sunday');
-          $('#weeklyTime', page).val(config.WeeklyTime || '03:00');
-          updateVisibility(page);
+      function load() {
+        ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+          ['EnableManualScan','ForceFullScan','EnableScheduledScan','EnableLibraryEvents','OverwriteExistingSubtitles'].forEach(function (n) { $('#' + n.charAt(0).toLowerCase() + n.slice(1), page).prop('checked', !!c[n]); });
+          $('#targetLanguage', page).val(c.TargetLanguage || 'zh-CN'); $('#maxConcurrency', page).val(c.MaxConcurrency || Math.max(1, Math.min(4, Math.floor((navigator.hardwareConcurrency || 2) / 2))));
+          $('#scheduleMode', page).val(c.ScheduleMode || 'Daily'); $('#dailyTime', page).val(c.DailyTime || '03:00'); $('#weeklyDay', page).val(c.WeeklyDay || 'Sunday'); $('#weeklyTime', page).val(c.WeeklyTime || '03:00'); update();
         });
-      }).on('change', '#enableManualScan,#enableScheduledScan,#scheduleMode', function () { updateVisibility($(this).closest(pageSelector)); }).on('submit', '.JavSubtitleScraperConfigForm', function () {
-        var form = this;
-        Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-          ['EnableScheduledScan','EnableManualScan','EnableLibraryEvents','ForceFullScan','OverwriteExistingSubtitles'].forEach(function (name) { config[name] = $('#' + name.charAt(0).toLowerCase() + name.slice(1), form).prop('checked'); });
-          config.TargetLanguage = $('#targetLanguage', form).val() || 'zh-CN';
-          config.MaxConcurrency = Math.max(1, Math.min(8, parseInt($('#maxConcurrency', form).val() || '1', 10)));
-          config.ScheduleMode = $('#scheduleMode', form).val() || 'Daily';
-          config.DailyTime = $('#dailyTime', form).val() || '03:00';
-          config.WeeklyDay = $('#weeklyDay', form).val() || 'Sunday';
-          config.WeeklyTime = $('#weeklyTime', form).val() || '03:00';
-          return ApiClient.updatePluginConfiguration(pluginId, config);
-        }).then(function (result) { Dashboard.processPluginConfigurationUpdateResult(result); }).finally(function () { Dashboard.hideLoadingMsg(); });
-        return false;
+      }
+      $(page).on('viewshow pageshow', load).on('change', '#enableManualScan,#enableScheduledScan,#scheduleMode', update).on('submit', '.JavSubtitleScraperConfigForm', function () {
+        var form = this; Dashboard.showLoadingMsg();
+        ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+          ['EnableManualScan','ForceFullScan','EnableScheduledScan','EnableLibraryEvents','OverwriteExistingSubtitles'].forEach(function (n) { c[n] = $('#' + n.charAt(0).toLowerCase() + n.slice(1), form).prop('checked'); });
+          c.TargetLanguage = $('#targetLanguage', form).val() || 'zh-CN'; c.MaxConcurrency = Math.max(1, Math.min(8, parseInt($('#maxConcurrency', form).val() || '1', 10)));
+          c.ScheduleMode = $('#scheduleMode', form).val() || 'Daily'; c.DailyTime = $('#dailyTime', form).val() || '03:00'; c.WeeklyDay = $('#weeklyDay', form).val() || 'Sunday'; c.WeeklyTime = $('#weeklyTime', form).val() || '03:00';
+          return ApiClient.updatePluginConfiguration(pluginId, c);
+        }).then(function (r) { Dashboard.processPluginConfigurationUpdateResult(r); }).finally(function () { Dashboard.hideLoadingMsg(); }); return false;
       });
     }());
   </script>
