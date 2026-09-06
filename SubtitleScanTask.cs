@@ -39,16 +39,16 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
 
     public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
     {
-        if (!Plugin.Instance.Configuration.EnableScheduledScan)
+        if (!Plugin.Instance.Configuration.EnableManualScan)
         {
-            _logger.Info("Scheduled subtitle scan is disabled.");
+            _logger.Info("Manual subtitle scan is disabled.");
             return;
         }
 
-        await ScanAsync(cancellationToken, progress).ConfigureAwait(false);
+        await ScanAsync(cancellationToken, progress, Plugin.Instance.Configuration.ForceFullScan).ConfigureAwait(false);
     }
 
-    private async Task ScanAsync(CancellationToken cancellationToken, IProgress<double> progress)
+    internal async Task ScanAsync(CancellationToken cancellationToken, IProgress<double> progress, bool forceFullScan)
     {
         var items = _libraryManager.GetItemList(new InternalItemsQuery
         {
@@ -73,7 +73,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
             else
             {
                 _logger.Debug($"Matched {number}: {file}");
-                if (!Plugin.Instance.Configuration.ForceFullScan && HasSubtitle(file, Plugin.Instance.Configuration.TargetLanguage))
+                if (!forceFullScan && HasSubtitle(file, Plugin.Instance.Configuration.TargetLanguage))
                 {
                     _logger.Debug($"Skipped existing subtitle for {number}: {file}");
                     progress.Report((index + 1d) / Math.Max(files.Count, 1) * 100d);
