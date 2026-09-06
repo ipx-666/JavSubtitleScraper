@@ -11,7 +11,7 @@ public sealed class PluginConfiguration : BasePluginConfiguration
     public bool ForceFullScan { get; set; }
     public bool OverwriteExistingSubtitles { get; set; }
     public string TargetLanguage { get; set; } = "zh-CN";
-    public int MaxConcurrency { get; set; } = 4;
+    public int MaxConcurrency { get; set; } = 2;
     public string ScheduleMode { get; set; } = "Daily";
     public string DailyTime { get; set; } = "03:00";
     public DayOfWeek WeeklyDay { get; set; } = DayOfWeek.Sunday;

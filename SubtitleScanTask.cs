@@ -24,7 +24,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         _logger = logManager.GetLogger(nameof(SubtitleScanTask));
         _libraryManager = libraryManager;
         _subtitleSource = new SubtitleSourceChain(new XunleiSubtitleSource(), new SubtitleCatSource());
-        var concurrency = Math.Clamp(Plugin.Instance?.Configuration.MaxConcurrency ?? 4, 1, 8);
+        var concurrency = Math.Clamp(Plugin.Instance?.Configuration.MaxConcurrency ?? 2, 1, 8);
         _concurrencyGate = new SemaphoreSlim(concurrency, concurrency);
         Current = this;
     }
