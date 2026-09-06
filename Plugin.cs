@@ -4,6 +4,7 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Model.Plugins;
 using System.Collections.Generic;
+using MediaBrowser.Model.Logging;
 
 namespace JavSubtitleScraper;
 
@@ -28,7 +29,9 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             Name = "config.html",
             DisplayName = PluginName,
-            EmbeddedResourcePath = "JavSubtitleScraper.Configuration.config.html",
+            EmbeddedResourcePath = GetType().Namespace + ".Configuration.config.html",
+            EnableInMainMenu = false,
+            EnableInUserMenu = false,
             IsMainConfigPage = true
         }
     };
