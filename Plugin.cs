@@ -26,7 +26,7 @@ public sealed class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         new PluginPageInfo
         {
-            Name = "JavSubtitleScraperConfig.html",
+            Name = "config.html",
             DisplayName = PluginName,
             EmbeddedResourcePath = "JavSubtitleScraper.Configuration.config.html",
             IsMainConfigPage = true
