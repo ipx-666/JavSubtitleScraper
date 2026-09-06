@@ -13,7 +13,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
 {
     private const string Site = "https://subtitlecat.com";
     private static readonly HttpClient Client = new();
-    private static readonly Regex LinkRegex = new("<a[^>]+href=\\\"(?<href>[^\\\"]+)\\\"[^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex LinkRegex = new("<a[^>]+href=[\\"'](?<href>[^\\"']+)[\\"'][^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
 
     public string Name => "SubtitleCat";
 
