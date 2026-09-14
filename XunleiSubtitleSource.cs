@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,6 +27,12 @@ public sealed class XunleiSubtitleSource : ISubtitleSource
 
         var results = new List<SubtitleCandidate>();
         CollectCandidates(document.RootElement, videoNumber, language, results);
+        results = results
+            .Select((candidate, index) => new { Candidate = candidate, Rank = LanguageRank(candidate.Title, videoNumber), Index = index })
+            .OrderByDescending(item => item.Rank)
+            .ThenBy(item => item.Index)
+            .Select(item => item.Candidate)
+            .ToList();
         return results;
     }
 
@@ -48,8 +56,7 @@ public sealed class XunleiSubtitleSource : ISubtitleSource
                 (url.EndsWith(".srt", StringComparison.OrdinalIgnoreCase) || url.Contains(".srt?", StringComparison.OrdinalIgnoreCase)))
             {
                 var title = GetString(element, "name", "title", "extra_name");
-                var searchable = title + " " + url;
-                if (MatchesCode(searchable, videoNumber))
+                if (MatchesCode(title, videoNumber) && LanguageRank(title, videoNumber) > 0)
                 {
                     results.Add(new SubtitleCandidate
                     {
@@ -73,6 +80,34 @@ public sealed class XunleiSubtitleSource : ISubtitleSource
         }
     }
 
+    private static int LanguageRank(string name, string videoNumber)
+    {
+        var value = name ?? string.Empty;
+        var stem = value.Split('?', '#')[0].TrimEnd('/');
+        var slash = stem.LastIndexOf('/');
+        if (slash >= 0) stem = stem[(slash + 1)..];
+        if (stem.EndsWith(".srt", StringComparison.OrdinalIgnoreCase))
+            stem = stem[..^4];
+
+        var code = videoNumber.Trim();
+        if (stem.Equals(code, StringComparison.OrdinalIgnoreCase)) return 3;
+        if (!stem.StartsWith(code, StringComparison.OrdinalIgnoreCase)) return 0;
+        var remainder = stem[code.Length..].ToLowerInvariant().Replace('_', '-');
+        if (Regex.IsMatch(remainder, @"(?:^|[._-])(?:zh-cn|zh-sg|zh-hans|chs|sc|simplified)(?:$|[._-])", RegexOptions.IgnoreCase)) return 5;
+        if (Regex.IsMatch(remainder, @"(?:^|[._-])(?:zh-tw|zh-hk|zh-mo|cht|tc|zh-hant|traditional)(?:$|[._-])", RegexOptions.IgnoreCase)) return 1;
+        if (Regex.IsMatch(remainder, @"(?:^|[._-])zh(?:$|[._-])", RegexOptions.IgnoreCase)) return 4;
+        if (Regex.IsMatch(remainder, @"(?:^|[._-])(?:en|eng|ja|jpn|jp|ko|kor|fr|fra|de|ger|es|spa|it|ita|pt|rus)(?:$|[._-])", RegexOptions.IgnoreCase)) return 0;
+        return 3;
+    }
+
+    private static bool MatchesCode(string value, string videoNumber)
+    {
+        var text = Path.GetFileNameWithoutExtension(value ?? string.Empty);
+        var code = (videoNumber ?? string.Empty).Trim();
+        if (code.Length == 0 || !text.StartsWith(code, StringComparison.OrdinalIgnoreCase)) return false;
+        return text.Length == code.Length || !char.IsDigit(text[code.Length]);
+    }
+
     private static string GetString(JsonElement element, params string[] names)
     {
         foreach (var name in names)
@@ -81,9 +116,4 @@ public sealed class XunleiSubtitleSource : ISubtitleSource
         return string.Empty;
     }
 
-    private static bool MatchesCode(string value, string videoNumber)
-    {
-        static string Normalize(string input) => string.Concat(input.ToUpperInvariant().Split(default(char[]), StringSplitOptions.RemoveEmptyEntries)).Replace("-", string.Empty).Replace("_", string.Empty);
-        return Normalize(value).Contains(Normalize(videoNumber), StringComparison.Ordinal);
-    }
 }
