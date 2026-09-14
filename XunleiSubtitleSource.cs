@@ -88,6 +88,7 @@ public sealed class XunleiSubtitleSource : ISubtitleSource
         if (slash >= 0) stem = stem[(slash + 1)..];
         if (stem.EndsWith(".srt", StringComparison.OrdinalIgnoreCase))
             stem = stem[..^4];
+        stem = Regex.Replace(stem, @"\s*\(\d+\)\s*$", string.Empty);
 
         var code = videoNumber.Trim();
         if (stem.Equals(code, StringComparison.OrdinalIgnoreCase)) return 3;
