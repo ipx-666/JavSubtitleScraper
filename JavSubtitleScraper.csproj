@@ -15,6 +15,6 @@
   <ItemGroup>
     <EmbeddedResource Include="Configuration.config.html" />
     <EmbeddedResource Include="Configuration.config.js" />
-    <EmbeddedResource Include="icon.svg" />
+    <EmbeddedResource Include="thumb.png" />
   </ItemGroup>
 </Project>
