@@ -31,13 +31,15 @@ public sealed class SubtitleCatSource : ISubtitleSource
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             var rowText = CleanText(match.Value);
             if (!MatchesCode(href + " " + CleanText(match.Groups["text"].Value), videoNumber)) continue;
-            matches.Add(new SearchMatch(ToAbsolute(href), Regex.IsMatch(rowText, @"translated\s+from\s+Chinese", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
+            var translatedFromChinese = Regex.IsMatch(rowText, @"translated\s+from\s+Chinese", RegexOptions.IgnoreCase);
+            matches.Add(new SearchMatch(ToAbsolute(href), translatedFromChinese, translatedFromChinese && Regex.IsMatch(rowText, "精翻", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
         }
 
         var pages = matches
             .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
             .OrderByDescending(item => item.TranslatedFromChinese)
+            .ThenByDescending(item => item.FineTranslation)
             .ThenByDescending(item => item.Languages)
             .ThenByDescending(item => item.Downloads)
             .ThenBy(item => item.Index)
@@ -109,10 +111,11 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
     private sealed class SearchMatch
     {
-        public SearchMatch(string url, bool translatedFromChinese, int languages, int downloads, int index)
+        public SearchMatch(string url, bool translatedFromChinese, bool fineTranslation, int languages, int downloads, int index)
         {
             Url = url;
             TranslatedFromChinese = translatedFromChinese;
+            FineTranslation = fineTranslation;
             Languages = languages;
             Downloads = downloads;
             Index = index;
@@ -120,6 +123,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
         public string Url { get; }
         public bool TranslatedFromChinese { get; }
+        public bool FineTranslation { get; }
         public int Languages { get; }
         public int Downloads { get; }
         public int Index { get; }
