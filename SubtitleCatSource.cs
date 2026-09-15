@@ -57,7 +57,6 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
         var preferred = candidates.Find(item => LanguageScore(item.Text) >= 3);
         if (string.IsNullOrWhiteSpace(preferred.Url)) preferred = candidates.Find(item => LanguageScore(item.Text) >= 2);
-        // if (string.IsNullOrWhiteSpace(preferred.Url) && candidates.Count > 0) preferred = candidates[0];
         if (!string.IsNullOrWhiteSpace(preferred.Url))
         {
             using var subtitleResponse = await Client.GetAsync(preferred.Url, cancellationToken).ConfigureAwait(false);
