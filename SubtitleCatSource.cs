@@ -45,7 +45,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
             .ToList();
         if (pages.Count == 0) return Array.Empty<SubtitleCandidate>();
 
-        var detailTasks = pages.Select((page, index) => ReadDetailPageAsync(page with { Priority = index }, language, cancellationToken)).ToArray();
+        var detailTasks = pages.Select((page, index) => { page.Priority = index; return ReadDetailPageAsync(page, language, cancellationToken); }).ToArray();
         var firstResult = await detailTasks[0].ConfigureAwait(false);
         if (firstResult.Any(item => item.LanguageRank == 5)) return firstResult;
         var pageResults = await Task.WhenAll(detailTasks).ConfigureAwait(false);
@@ -107,5 +107,22 @@ public sealed class SubtitleCatSource : ISubtitleSource
         return normalizedCode.Length > 0 && normalizedValue.Contains(normalizedCode, StringComparison.Ordinal);
     }
 
-    private sealed record SearchMatch(string Url, bool TranslatedFromChinese, int Languages, int Downloads, int Index, int Priority = 0);
+    private sealed class SearchMatch
+    {
+        public SearchMatch(string url, bool translatedFromChinese, int languages, int downloads, int index)
+        {
+            Url = url;
+            TranslatedFromChinese = translatedFromChinese;
+            Languages = languages;
+            Downloads = downloads;
+            Index = index;
+        }
+
+        public string Url { get; }
+        public bool TranslatedFromChinese { get; }
+        public int Languages { get; }
+        public int Downloads { get; }
+        public int Index { get; }
+        public int Priority { get; set; }
+    }
 }
