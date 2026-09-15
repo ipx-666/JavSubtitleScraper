@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
@@ -12,63 +13,93 @@ namespace JavSubtitleScraper;
 public sealed class SubtitleCatSource : ISubtitleSource
 {
     private const string Site = "https://subtitlecat.com";
+    private const int MaxDetailPages = 5;
     private static readonly HttpClient Client = new();
-    private static readonly Regex LinkRegex = new("<a[^>]+href=[\\\"'](?<href>[^\\\"']+)[\\\"'][^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex LinkRegex = new("<a[^>]+href=[\"'](?<href>[^\"']+)[\"'][^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex RowRegex = new("<tr[\s\S]*?<a\s+href=[\"'](?<href>[^\"']+)[\"'][^>]*>(?<text>[\s\S]*?)</a>[\s\S]*?</tr>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public string Name => "SubtitleCat";
 
     public async Task<IReadOnlyList<SubtitleCandidate>> SearchAsync(string videoNumber, string language, long videoDurationMs, CancellationToken cancellationToken)
     {
-        using var response = await Client.GetAsync(Site + "/index.php?search=" + Uri.EscapeDataString(videoNumber), cancellationToken).ConfigureAwait(false);
+        using var response = await Client.GetAsync(Site + "/index.php?search=" + Uri.EscapeDataString(videoNumber) + "&show=1000", cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        var results = new List<SubtitleCandidate>();
-        foreach (Match match in LinkRegex.Matches(html))
+        var matches = new List<SearchMatch>();
+        foreach (Match match in RowRegex.Matches(html))
         {
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
-            var text = WebUtility.HtmlDecode(Regex.Replace(match.Groups["text"].Value, "<[^>]+>", " "));
-            if (!MatchesCode(href + " " + text, videoNumber)) continue;
-            results.Add(new SubtitleCandidate { Source = Name, Id = href, Language = language, Format = "srt", DownloadUrl = ToAbsolute(href), Title = text.Trim() });
-            break;
+            var rowText = CleanText(match.Value);
+            if (!MatchesCode(href + " " + CleanText(match.Groups["text"].Value), videoNumber)) continue;
+            matches.Add(new SearchMatch(ToAbsolute(href), Regex.IsMatch(rowText, "translated\s+from\s+Chinese", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
         }
-        return results;
+
+        var pages = matches
+            .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderByDescending(item => item.TranslatedFromChinese)
+            .ThenByDescending(item => item.Languages)
+            .ThenByDescending(item => item.Downloads)
+            .ThenBy(item => item.Index)
+            .Take(MaxDetailPages)
+            .ToList();
+        if (pages.Count == 0) return Array.Empty<SubtitleCandidate>();
+
+        var detailTasks = pages.Select((page, index) => ReadDetailPageAsync(page with { Priority = index }, language, cancellationToken)).ToArray();
+        var firstResult = await detailTasks[0].ConfigureAwait(false);
+        if (firstResult.Any(item => item.LanguageRank == 5)) return firstResult;
+        var pageResults = await Task.WhenAll(detailTasks).ConfigureAwait(false);
+        return pageResults
+            .SelectMany(result => result)
+            .OrderByDescending(item => item.LanguageRank)
+            .ThenByDescending(item => item.QualityRank)
+            .ToList();
     }
 
     public async Task<Stream> DownloadAsync(SubtitleCandidate candidate, CancellationToken cancellationToken)
     {
         using var response = await Client.GetAsync(candidate.DownloadUrl, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
-        var bytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? string.Empty;
-        if (contentType.Contains("subtitle", StringComparison.OrdinalIgnoreCase) ||
-            contentType.Contains("text/plain", StringComparison.OrdinalIgnoreCase) ||
-            candidate.DownloadUrl.EndsWith(".srt", StringComparison.OrdinalIgnoreCase))
-            return new MemoryStream(bytes, writable: false);
+        return new MemoryStream(await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false), writable: false);
+    }
 
-        var html = System.Text.Encoding.UTF8.GetString(bytes);
-        var candidates = new List<(string Url, string Text)>();
-        foreach (Match match in LinkRegex.Matches(html))
+    private static async Task<IReadOnlyList<SubtitleCandidate>> ReadDetailPageAsync(SearchMatch page, string language, CancellationToken cancellationToken)
+    {
+        try
         {
-            var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
-            if (!href.Contains(".srt", StringComparison.OrdinalIgnoreCase) && !href.Contains("download.php", StringComparison.OrdinalIgnoreCase)) continue;
-            var text = WebUtility.HtmlDecode(Regex.Replace(match.Groups["text"].Value, "<[^>]+>", " "));
-            candidates.Add((ToAbsolute(href), href + " " + text));
+            using var response = await Client.GetAsync(page.Url, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var result = new List<SubtitleCandidate>();
+            foreach (Match match in LinkRegex.Matches(html))
+            {
+                var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
+                if (!Regex.IsMatch(href, @"-zh-CN\.srt(?:\?|$)", RegexOptions.IgnoreCase) &&
+                    !Regex.IsMatch(href, @"-zh-TW\.srt(?:\?|$)", RegexOptions.IgnoreCase)) continue;
+                var rank = Regex.IsMatch(href, @"-zh-CN\.srt(?:\?|$)", RegexOptions.IgnoreCase) ? 5 : 1;
+                var url = ToAbsolute(href);
+                if (result.Any(item => item.DownloadUrl.Equals(url, StringComparison.OrdinalIgnoreCase))) continue;
+                result.Add(new SubtitleCandidate
+                {
+                    Source = "SubtitleCat",
+                    Id = url,
+                    Language = language,
+                    Format = "srt",
+                    DownloadUrl = url,
+                    Title = CleanText(match.Groups["text"].Value),
+                    LanguageRank = rank,
+                    QualityRank = MaxDetailPages - page.Priority
+                });
+            }
+            return result;
         }
-
-        var preferred = candidates.Find(item => LanguageScore(item.Text) >= 3);
-        if (string.IsNullOrWhiteSpace(preferred.Url)) preferred = candidates.Find(item => LanguageScore(item.Text) >= 2);
-        if (!string.IsNullOrWhiteSpace(preferred.Url))
-        {
-            using var subtitleResponse = await Client.GetAsync(preferred.Url, cancellationToken).ConfigureAwait(false);
-            subtitleResponse.EnsureSuccessStatusCode();
-            return new MemoryStream(await subtitleResponse.Content.ReadAsByteArrayAsync().ConfigureAwait(false), writable: false);
-        }
-
-        throw new InvalidDataException("SubtitleCat page did not contain a subtitle download link.");
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { return Array.Empty<SubtitleCandidate>(); }
     }
 
     private static string ToAbsolute(string href) => href.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? href : Site + (href.StartsWith("/") ? href : "/" + href);
-
+    private static string CleanText(string value) => Regex.Replace(WebUtility.HtmlDecode(value ?? string.Empty), "<[^>]+>", " ").Replace("\r", " ").Replace("\n", " ").Trim();
+    private static int ParseCount(string value, string suffix) => int.TryParse((Regex.Match(value, "(\d[\d,]*)\s+" + suffix, RegexOptions.IgnoreCase).Groups[1].Value ?? string.Empty).Replace(",", string.Empty), out var count) ? count : 0;
     private static bool MatchesCode(string value, string code)
     {
         var normalizedValue = Regex.Replace(value, "[^A-Za-z0-9]", string.Empty).ToUpperInvariant();
@@ -76,11 +107,5 @@ public sealed class SubtitleCatSource : ISubtitleSource
         return normalizedCode.Length > 0 && normalizedValue.Contains(normalizedCode, StringComparison.Ordinal);
     }
 
-    private static int LanguageScore(string value)
-    {
-        var text = value.ToLowerInvariant();
-        if (text.Contains("zh-cn") || text.Contains("zh_cn") || text.Contains("simplified") || text.Contains("简体") || text.Contains("简中") || text.Contains("chs")) return 3;
-        if (text.Contains("zh") || text.Contains("cn") || text.Contains("chinese") || text.Contains("中文")) return 2;
-        return 0;
-    }
+    private sealed record SearchMatch(string Url, bool TranslatedFromChinese, int Languages, int Downloads, int Index, int Priority = 0);
 }
