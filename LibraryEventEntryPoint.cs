@@ -23,12 +23,13 @@ public sealed class LibraryEventEntryPoint : IServerEntryPoint
     {
         if (!Plugin.Instance.Configuration.EnableLibraryEvents || string.IsNullOrWhiteSpace(args.Item.Path)) return;
         var path = args.Item.Path;
+        var durationMs = args.Item.RunTimeTicks.GetValueOrDefault() > 0 ? args.Item.RunTimeTicks.GetValueOrDefault() / TimeSpan.TicksPerMillisecond : 0;
         _ = System.Threading.Tasks.Task.Run(async () =>
         {
             try
             {
                 if (SubtitleScanTask.Current != null)
-                    await SubtitleScanTask.Current.ProcessSingleAsync(path, default).ConfigureAwait(false);
+                    await SubtitleScanTask.Current.ProcessSingleAsync(path, durationMs, default).ConfigureAwait(false);
             }
             catch (Exception ex) { _logger.Error($"Library event subtitle processing failed: {ex.Message}"); }
         });

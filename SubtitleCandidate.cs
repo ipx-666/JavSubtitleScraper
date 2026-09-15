@@ -11,4 +11,7 @@ public sealed class SubtitleCandidate
     public string Format { get; set; } = "srt";
     public string DownloadUrl { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
+    public long DurationMs { get; set; }
+    public int LanguageRank { get; set; }
+    public int QualityRank { get; set; }
 }

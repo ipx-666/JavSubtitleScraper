@@ -16,13 +16,13 @@ public sealed class SubtitleSourceChain : ISubtitleSource
 
     public string Name => "优先级字幕源";
 
-    public async Task<IReadOnlyList<SubtitleCandidate>> SearchAsync(string videoNumber, string language, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SubtitleCandidate>> SearchAsync(string videoNumber, string language, long videoDurationMs, CancellationToken cancellationToken)
     {
         foreach (var source in _sources)
         {
             try
             {
-                var results = await source.SearchAsync(videoNumber, language, cancellationToken).ConfigureAwait(false);
+                var results = await source.SearchAsync(videoNumber, language, videoDurationMs, cancellationToken).ConfigureAwait(false);
                 if (results.Count > 0) return results;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

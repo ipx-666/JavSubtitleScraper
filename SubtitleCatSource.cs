@@ -17,7 +17,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
     public string Name => "SubtitleCat";
 
-    public async Task<IReadOnlyList<SubtitleCandidate>> SearchAsync(string videoNumber, string language, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SubtitleCandidate>> SearchAsync(string videoNumber, string language, long videoDurationMs, CancellationToken cancellationToken)
     {
         using var response = await Client.GetAsync(Site + "/index.php?search=" + Uri.EscapeDataString(videoNumber), cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
@@ -27,10 +27,10 @@ public sealed class SubtitleCatSource : ISubtitleSource
         {
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             var text = WebUtility.HtmlDecode(Regex.Replace(match.Groups["text"].Value, "<[^>]+>", " "));
-            if (!MatchesCode(href + " " + text, videoNumber) || LanguageScore(text) == 0) continue;
+            if (!MatchesCode(href + " " + text, videoNumber)) continue;
             results.Add(new SubtitleCandidate { Source = Name, Id = href, Language = language, Format = "srt", DownloadUrl = ToAbsolute(href), Title = text.Trim() });
+            break;
         }
-        results.Sort((left, right) => LanguageScore(right.Title).CompareTo(LanguageScore(left.Title)));
         return results;
     }
 
@@ -46,12 +46,21 @@ public sealed class SubtitleCatSource : ISubtitleSource
             return new MemoryStream(bytes, writable: false);
 
         var html = System.Text.Encoding.UTF8.GetString(bytes);
+        var candidates = new List<(string Url, string Text)>();
         foreach (Match match in LinkRegex.Matches(html))
         {
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             if (!href.Contains(".srt", StringComparison.OrdinalIgnoreCase) && !href.Contains("download.php", StringComparison.OrdinalIgnoreCase)) continue;
-            var downloadUrl = ToAbsolute(href);
-            using var subtitleResponse = await Client.GetAsync(downloadUrl, cancellationToken).ConfigureAwait(false);
+            var text = WebUtility.HtmlDecode(Regex.Replace(match.Groups["text"].Value, "<[^>]+>", " "));
+            candidates.Add((ToAbsolute(href), href + " " + text));
+        }
+
+        var preferred = candidates.Find(item => LanguageScore(item.Text) >= 3);
+        if (string.IsNullOrWhiteSpace(preferred.Url)) preferred = candidates.Find(item => LanguageScore(item.Text) >= 2);
+        // if (string.IsNullOrWhiteSpace(preferred.Url) && candidates.Count > 0) preferred = candidates[0];
+        if (!string.IsNullOrWhiteSpace(preferred.Url))
+        {
+            using var subtitleResponse = await Client.GetAsync(preferred.Url, cancellationToken).ConfigureAwait(false);
             subtitleResponse.EnsureSuccessStatusCode();
             return new MemoryStream(await subtitleResponse.Content.ReadAsByteArrayAsync().ConfigureAwait(false), writable: false);
         }

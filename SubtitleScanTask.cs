@@ -61,8 +61,9 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         });
         var files = items
             .Where(item => !string.IsNullOrWhiteSpace(item.Path))
-            .Select(item => item.Path)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(item => new ScanFile(item.Path, item.RunTimeTicks.GetValueOrDefault() > 0 ? item.RunTimeTicks.GetValueOrDefault() / TimeSpan.TicksPerMillisecond : 0))
+            .GroupBy(file => file.Path, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .ToList();
         _logger.Info($"Found {files.Count} video files.");
 
@@ -72,7 +73,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
             await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await ProcessFileAsync(file, forceFullScan, cancellationToken).ConfigureAwait(false);
+                await ProcessFileAsync(file.Path, file.DurationMs, forceFullScan, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -85,7 +86,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         progress.Report(100);
     }
 
-    private async Task ProcessFileAsync(string file, bool forceFullScan, CancellationToken cancellationToken)
+    private async Task ProcessFileAsync(string file, long videoDurationMs, bool forceFullScan, CancellationToken cancellationToken)
     {
             cancellationToken.ThrowIfCancellationRequested();
             var number = NumberExtractor.FromPath(file);
@@ -101,7 +102,7 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
                 }
                 try
                 {
-                    var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
+                    var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, videoDurationMs, cancellationToken).ConfigureAwait(false);
                     if (candidates.Count == 0)
                         _logger.Warn($"No subtitle found for {number}.");
                     else
@@ -152,14 +153,14 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         return Directory.Exists(directory) && Directory.EnumerateFiles(directory, baseName + suffix + "*", SearchOption.TopDirectoryOnly).Any();
     }
 
-    internal async Task ProcessSingleAsync(string videoPath, CancellationToken cancellationToken)
+    internal async Task ProcessSingleAsync(string videoPath, long videoDurationMs, CancellationToken cancellationToken)
     {
         await _concurrencyGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
         var number = NumberExtractor.FromPath(videoPath);
         if (number == null || HasSubtitle(videoPath, Plugin.Instance.Configuration.TargetLanguage)) return;
-        var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, cancellationToken).ConfigureAwait(false);
+        var candidates = await _subtitleSource.SearchAsync(number, Plugin.Instance.Configuration.TargetLanguage, videoDurationMs, cancellationToken).ConfigureAwait(false);
         foreach (var candidate in candidates)
         {
             try
@@ -176,6 +177,18 @@ public sealed class SubtitleScanTask : IScheduledTask, IConfigurableScheduledTas
         {
             _concurrencyGate.Release();
         }
+    }
+
+    private sealed class ScanFile
+    {
+        public ScanFile(string path, long durationMs)
+        {
+            Path = path;
+            DurationMs = durationMs;
+        }
+
+        public string Path { get; }
+        public long DurationMs { get; }
     }
 
 }
