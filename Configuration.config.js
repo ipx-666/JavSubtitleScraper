@@ -10,6 +10,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
         var durationFilter = view.querySelector('#enableDurationFilter').checked;
 
         view.querySelector('#forceFullScan').disabled = !manual;
+        view.querySelector('#overwriteExistingSubtitles').disabled = !manual || !view.querySelector('#forceFullScan').checked;
         view.querySelector('#durationFilterLowerPercent').disabled = !durationFilter;
         view.querySelector('#durationFilterUpperPercent').disabled = !durationFilter;
         Array.prototype.forEach.call(view.querySelectorAll('#scheduleOptions input, #scheduleOptions select'), function (element) {
@@ -70,7 +71,7 @@ define(['baseView', 'loading', 'emby-input', 'emby-button', 'emby-select', 'emby
     function View(view, params) {
         BaseView.apply(this, arguments);
         view.querySelector('form').addEventListener('submit', onSubmit);
-        ['enableManualScan', 'enableScheduledScan', 'scheduleMode', 'enableDurationFilter'].forEach(function (id) {
+        ['enableManualScan', 'forceFullScan', 'enableScheduledScan', 'scheduleMode', 'enableDurationFilter'].forEach(function (id) {
             view.querySelector('#' + id).addEventListener('change', function () {
                 updateOptions(view);
             });
