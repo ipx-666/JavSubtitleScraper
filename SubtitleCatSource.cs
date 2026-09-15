@@ -16,7 +16,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
     private const int MaxDetailPages = 5;
     private static readonly HttpClient Client = new();
     private static readonly Regex LinkRegex = new("<a[^>]+href=[\"'](?<href>[^\"']+)[\"'][^>]*>(?<text>.*?)</a>", RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex RowRegex = new("<tr[\s\S]*?<a\s+href=[\"'](?<href>[^\"']+)[\"'][^>]*>(?<text>[\s\S]*?)</a>[\s\S]*?</tr>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex RowRegex = new(@"<tr[sS]*?<as+href=[""'](?<href>[^""']+)[""'][^>]*>(?<text>[sS]*?)</a>[sS]*?</tr>", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public string Name => "SubtitleCat";
 
@@ -31,7 +31,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             var rowText = CleanText(match.Value);
             if (!MatchesCode(href + " " + CleanText(match.Groups["text"].Value), videoNumber)) continue;
-            matches.Add(new SearchMatch(ToAbsolute(href), Regex.IsMatch(rowText, "translated\s+from\s+Chinese", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
+            matches.Add(new SearchMatch(ToAbsolute(href), Regex.IsMatch(rowText, @"translateds+froms+Chinese", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
         }
 
         var pages = matches
@@ -99,7 +99,7 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
     private static string ToAbsolute(string href) => href.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? href : Site + (href.StartsWith("/") ? href : "/" + href);
     private static string CleanText(string value) => Regex.Replace(WebUtility.HtmlDecode(value ?? string.Empty), "<[^>]+>", " ").Replace("\r", " ").Replace("\n", " ").Trim();
-    private static int ParseCount(string value, string suffix) => int.TryParse((Regex.Match(value, "(\d[\d,]*)\s+" + suffix, RegexOptions.IgnoreCase).Groups[1].Value ?? string.Empty).Replace(",", string.Empty), out var count) ? count : 0;
+    private static int ParseCount(string value, string suffix) => int.TryParse((Regex.Match(value, @"(d[d,]*)s+" + suffix, RegexOptions.IgnoreCase).Groups[1].Value ?? string.Empty).Replace(",", string.Empty), out var count) ? count : 0;
     private static bool MatchesCode(string value, string code)
     {
         var normalizedValue = Regex.Replace(value, "[^A-Za-z0-9]", string.Empty).ToUpperInvariant();
