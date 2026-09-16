@@ -1,6 +1,6 @@
 # JavSubtitleScraper
 
-Emby 插件：自动识别 JAV 番号并搜索、下载中文字幕。
+Emby 插件：根据视频文件名或目录名中的 JAV 番号，搜索并下载中文字幕。
 
 ## 思路来源
 
