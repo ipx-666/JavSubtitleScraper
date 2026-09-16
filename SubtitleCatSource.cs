@@ -26,19 +26,25 @@ public sealed class SubtitleCatSource : ISubtitleSource
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         var matches = new List<SearchMatch>();
+        var japaneseTranslationUrls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match match in RowRegex.Matches(html))
         {
             var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
             var rowText = CleanText(match.Value);
             if (!MatchesCode(href + " " + CleanText(match.Groups["text"].Value), videoNumber)) continue;
             var translatedFromChinese = Regex.IsMatch(rowText, @"translated\s+from\s+Chinese", RegexOptions.IgnoreCase);
+            var translatedFromJapanese = Regex.IsMatch(rowText, @"translated\s+from\s+Japanese", RegexOptions.IgnoreCase);
+            if (translatedFromJapanese) japaneseTranslationUrls.Add(ToAbsolute(href));
             matches.Add(new SearchMatch(ToAbsolute(href), translatedFromChinese, translatedFromChinese && Regex.IsMatch(rowText, "精翻", RegexOptions.IgnoreCase), ParseCount(rowText, "languages?"), ParseCount(rowText, "downloads?"), matches.Count));
         }
+
+        foreach (var match in matches)
+            match.TranslatedFromJapanese = japaneseTranslationUrls.Contains(match.Url);
 
         var pages = matches
             .GroupBy(item => item.Url, StringComparer.OrdinalIgnoreCase)
             .Select(group => group.First())
-            .OrderByDescending(item => item.TranslatedFromChinese)
+            .OrderByDescending(item => item.TranslationTier)
             .ThenByDescending(item => item.FineTranslation)
             .ThenByDescending(item => item.Languages)
             .ThenByDescending(item => item.Downloads)
@@ -54,7 +60,11 @@ public sealed class SubtitleCatSource : ISubtitleSource
         return pageResults
             .SelectMany(result => result)
             .OrderByDescending(item => item.LanguageRank)
-            .ThenByDescending(item => item.QualityRank)
+            .ThenByDescending(item => item.TranslationTier)
+            .ThenByDescending(item => item.FineTranslation)
+            .ThenByDescending(item => item.Languages)
+            .ThenByDescending(item => item.Downloads)
+            .ThenBy(item => item.PageIndex)
             .ToList();
     }
 
@@ -90,7 +100,12 @@ public sealed class SubtitleCatSource : ISubtitleSource
                     DownloadUrl = url,
                     Title = CleanText(match.Groups["text"].Value),
                     LanguageRank = rank,
-                    QualityRank = MaxDetailPages - page.Priority
+                    QualityRank = MaxDetailPages - page.Priority,
+                    TranslationTier = page.TranslationTier,
+                    FineTranslation = page.FineTranslation,
+                    Languages = page.Languages,
+                    Downloads = page.Downloads,
+                    PageIndex = page.Index
                 });
             }
             return result;
@@ -123,7 +138,9 @@ public sealed class SubtitleCatSource : ISubtitleSource
 
         public string Url { get; }
         public bool TranslatedFromChinese { get; }
+        public bool TranslatedFromJapanese { get; set; }
         public bool FineTranslation { get; }
+        public int TranslationTier => TranslatedFromChinese ? 3 : TranslatedFromJapanese ? 2 : 1;
         public int Languages { get; }
         public int Downloads { get; }
         public int Index { get; }

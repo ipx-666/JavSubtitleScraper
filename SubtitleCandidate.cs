@@ -14,4 +14,9 @@ public sealed class SubtitleCandidate
     public long DurationMs { get; set; }
     public int LanguageRank { get; set; }
     public int QualityRank { get; set; }
+    public int TranslationTier { get; set; }
+    public bool FineTranslation { get; set; }
+    public int Languages { get; set; }
+    public int Downloads { get; set; }
+    public int PageIndex { get; set; }
 }
