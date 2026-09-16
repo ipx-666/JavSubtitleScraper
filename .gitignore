@@ -1,18 +1,33 @@
+# .NET build output
 bin/
 obj/
+
+# Visual Studio / Rider / VS Code
 .vs/
+.idea/
+.vscode/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 
-# Local Emby/plugin configuration and logs
-*.json
+# Test and runtime logs
 *.log
-logs/
+embyserver.txt
 
-# IDE and OS metadata
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
+# Local configuration and secrets
+*.local
+*.env
+appsettings*.json
+secrets.json
+
+# Temporary files and generated archives
+*.tmp
+*.bak
+*.orig
+*.7z
+*.zip
+
+# Local helper scripts
+make-icon.ps1
+
