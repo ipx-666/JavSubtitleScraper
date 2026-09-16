@@ -76,12 +76,6 @@ JavSubtitleScraper 是一个 Emby 服务端插件。它从媒体文件名或目�
 视频名.zh-CN.srt
 ```
 
-SubtitleCat 来源会额外标记来源：
-
-```text
-视频名.zh-CN.subtitlecat.srt
-```
-
 下载先写入随机临时文件，成功后移动到目标路径；失败时清理临时文件。目标文件已存在且未启用覆盖时，不替换原文件。
 
 ## 6. 已有字幕与异常处理
