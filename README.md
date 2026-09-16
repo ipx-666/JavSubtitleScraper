@@ -2,6 +2,10 @@
 
 Emby 插件：自动识别 JAV 番号并搜索、下载中文字幕。
 
+## 思路来源
+
+本项目的字幕加载与交互优化思路参考了 [MissAV/Jable 自动中文字幕（交互优化版，iOS 修复）](https://sleazyfork.org/zh-CN/scripts/581130-missav-jable%E8%87%AA%E5%8A%A8%E4%B8%AD%E6%96%87%E5%AD%97%E5%B9%95-%E4%BA%A4%E4%BA%92%E4%BC%98%E5%8C%96%E7%89%88-ios%E4%BF%AE%E5%A4%8D)。
+
 ## 功能
 
 - 从视频文件名或目录名识别 JAV 番号
@@ -56,7 +60,3 @@ SubtitleCat 字幕会增加来源标记：
 ## 更新日志
 
 参见 [CHANGELOG.md](CHANGELOG.md)。
-
-## 思路来源
-
-本项目的字幕加载与交互优化思路参考了 [MissAV/Jable 自动中文字幕（交互优化版，iOS 修复）](https://sleazyfork.org/zh-CN/scripts/581130-missav-jable%E8%87%AA%E5%8A%A8%E4%B8%AD%E6%96%87%E5%AD%97%E5%B9%95-%E4%BA%A4%E4%BA%92%E4%BC%98%E5%8C%96%E7%89%88-ios%E4%BF%AE%E5%A4%8D)。
